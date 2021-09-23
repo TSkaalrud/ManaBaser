@@ -17,6 +17,8 @@
 #include <vector>
 #include <string>
 
+void getSingleInput(int* var);
+
 int main()
 {
     using namespace boost::math;
@@ -27,29 +29,29 @@ int main()
     cout << "***Welcome to ManaBaser***\n";
     while (1) {
         //Starting prompt and input check
-        cout << "What would you like to do? (1-2); 0 to close the program\n" <<
-            "(1) Check my draw chances based on my current deck\n" <<
-            "(2) Calculate the colored sources required in my deck to reliably have them on-curve\n";
-        cin >> modeSelected;
-        while (cin.fail()) {
-            cin.clear();
-            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            cout << "Don't make me get sassy, gimme a real input!\n";
-            cin >> modeSelected;
-        }
-        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        cout << "\nWhat would you like to do? (0-4); 0 to close the program\n" <<
+            "(0) Exit.\n" <<
+            "(1) (Basic) Check my draw chances based on my current deck.\n" <<
+            "(2) (Advanced) Check my mana draws based on my current deck.\n" <<
+            "[Coming Soon] (3) Calculate the colored sources required in my deck to reliably have them on-curve.\n" <<
+            "[Coming Soon] (4) Input a url to a premade deck and get stats based on it.\n";
+        getSingleInput(&modeSelected);
+
         //Mode 0 exits
-        if (modeSelected == 0)
+        switch (modeSelected)
+        {
+        case 0:
             return EXIT_SUCCESS;
-        //Mode 1
-        if (modeSelected == 1) {
+            //Mode 1
+        case 1:
+        {
             std::vector<std::string> inputCategories;
             std::string inputBuffer = "";
 
             //Query user for how many things they're interested in when drawing
             cout << "\nAlrighty then, let's figure out if you have bad luck or you just suck at math! \n" <<
-            "How many exclusive categories of things are you looking to draw? (Usually lands, but you can check whatever) \n" <<
-            "name your categories off with spaces\n e.g.:Swamps Plains\n";
+                "How many exclusive categories of things are you looking to draw? (Usually lands, but you can check whatever) \n" <<
+                "name your categories off with spaces\n e.g.:Swamps Plains\n";
             do {
                 cin >> inputBuffer;
                 inputCategories.push_back(inputBuffer);
@@ -61,28 +63,39 @@ int main()
             cout << "\nNext, I'll get you to tell me about your deck. " <<
                 "How large is your deck?\n";
             int deckSize;
-            cin >> deckSize;
-            cout<< "\nFor each of the prior categories, \n" <<
+            getSingleInput(&deckSize);
+
+
+            cout << "\nFor each of the prior categories, \n" <<
                 "how many of the card type are in your deck and how many of that type do you want to draw in your opening hand.\n" <<
                 "e.g.: 35 2\n\n";
             std::vector<std::vector<int>> statsInputs;
-            for (int i = 0; i < inputCategories.size(); i++) {
-                cout << "Category " << inputCategories[i] << ": ";
-                std::vector<int> categoryStats;
-                for (int j = 0; j < 2; j++) {
-                    int temp;
-                    cin >> temp;
-                    categoryStats.push_back(temp);
+            int drawSum = 0; //also the number of turns worth of land drops 
+            do {
+                for (unsigned int i = 0; i < inputCategories.size(); i++) {
+                    cout << "Category " << inputCategories[i] << ": ";
+                    std::vector<int> categoryStats;
+                    for (int j = 0; j < 2; j++) {
+                        int temp;
+                        getSingleInput(&temp);
+                        categoryStats.push_back(temp);
+                    }
+                    drawSum += categoryStats[1];
+                    statsInputs.push_back(categoryStats);
                 }
-                statsInputs.push_back(categoryStats);
-            }
-            cout << "Based on what you've given:\n";
+                if (drawSum > 7) {
+                    "You are attempting to draw too many cards, try again";
+                    statsInputs.clear();
+                }
+            } while (drawSum > 7);
+            
+
+            cout << "\nBased on what you've given:\n";
             int drawsLeft = 7;
             int landsLeft = 0;
-            int totalDrawn = 0; //the number of turns worth of land drops 
-            for (int i = 0; i < inputCategories.size(); i++) {
-                float pdfTemp = pdf(hypergeometric(statsInputs[i][0], drawsLeft, deckSize), statsInputs[i][1]);
-                float cdfTemp = (cdf(hypergeometric(statsInputs[i][0], drawsLeft, deckSize), statsInputs[i][1]) - cdf(hypergeometric(statsInputs[i][0], drawsLeft, deckSize), 0));
+            for (unsigned int i = 0; i < inputCategories.size(); i++) {
+                double pdfTemp = pdf(hypergeometric(statsInputs[i][0], drawsLeft, deckSize), statsInputs[i][1]);
+                double cdfTemp = (cdf(hypergeometric(statsInputs[i][0], drawsLeft, deckSize), statsInputs[i][1]) - cdf(hypergeometric(statsInputs[i][0], drawsLeft, deckSize), 0));
                 cout << "Your chances of drawing exactly " << statsInputs[i][1] << " " << inputCategories[i] << " are: " << pdfTemp * 100 << "%\n";
                 cout << "Factoring in a free mulligan, this goes up to " << (pdfTemp + ((1 - pdfTemp) * pdfTemp)) * 100 << "%\n";
                 cout << "Excluding none, your chances of drawing up to that many are: " << cdfTemp * 100 << "%\n";
@@ -91,30 +104,39 @@ int main()
                 drawsLeft -= statsInputs[i][1];
                 deckSize -= statsInputs[i][1];
                 landsLeft += (statsInputs[i][0] - statsInputs[i][1]);
-                totalDrawn += statsInputs[i][1];
             }
-            cout << "Assuming that hand was interested only in land, subsequent draws give a " <<
-                (cdf(hypergeometric(landsLeft, totalDrawn, deckSize), totalDrawn) - cdf(hypergeometric(landsLeft, totalDrawn, deckSize), 0)) * 100 <<
+            cout << "Subsequent draws give a " <<
+                (cdf(hypergeometric(landsLeft, drawSum, deckSize), drawSum) - cdf(hypergeometric(landsLeft, drawSum, deckSize), 0)) * 100 <<
                 "% chance of you drawing further lands before you run out.\n\n";
+            cout << "Press any key to return to main menu\n";
+            cout << "Lands: " << landsLeft << std::endl;
+            system("pause>0");
         }
-        //Mode 2
-        else if (modeSelected == 2) {
-
-        }
-        //Mode 3
-        else if (modeSelected == 3) {
+        case 2:
             cout << "Feature coming soon! (TM)";
-        }
-        //Nonexistent Modes
-        else {
+            break;
+        case 3:
+            cout << "Feature coming soon! (TM)";
+            break;
+        default:
             cout << "Staaahhhhp! Please do as you're told. \n";
+            break;
         }
     }
-
-
-
-
 }
+
+
+void getSingleInput(int* var) {
+    using std::cin;
+    using std::cout;
+    while (!(cin >> *var)) {
+        cin.clear(); //clear bad input flag
+        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); //discard input
+        cout << "Don't make me get sassy, gimme a real input!\n\n";
+    }
+    return;
+}
+
 
 /* test this calculates the cumualtive probability of drawing from 35 lands, with a full hand of 7 cards, in a 99 card edh deck, of drawing up to 7 lands (0-7 lands inclusive)
 std::cout << cdf(hypergeometric(35,7,99), 7);
