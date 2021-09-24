@@ -18,6 +18,9 @@
 #include <string>
 
 void getSingleInput(int* var);
+double pdfprob(int desiredCards, int deckSize, int draws = 1, int successes = 0);
+double cdfprob(int desiredCards, int deckSize, int draws = 1, int successes = 0);
+void mulligan(std::vector<double> mulliganTable, double mulliganChance);
 
 int main()
 {
@@ -43,8 +46,7 @@ int main()
         case 0:
             return EXIT_SUCCESS;
             //Mode 1
-        case 1:
-        {
+        case 1: {
             std::vector<std::string> inputCategories;
             std::string inputBuffer = "";
 
@@ -88,7 +90,7 @@ int main()
                     statsInputs.clear();
                 }
             } while (drawSum > 7);
-            
+
 
             cout << "\nBased on what you've given:\n";
             int drawsLeft = 7;
@@ -109,14 +111,74 @@ int main()
                 (cdf(hypergeometric(landsLeft, drawSum, deckSize), drawSum) - cdf(hypergeometric(landsLeft, drawSum, deckSize), 0)) * 100 <<
                 "% chance of you drawing further lands before you run out.\n\n";
             cout << "Press any key to return to main menu\n";
-            cout << "Lands: " << landsLeft << std::endl;
             system("pause>0");
         }
-        case 2:
-            cout << "Feature coming soon! (TM)";
+        break;
+      
+        case 2: {
+            /*This mode will provide stats on land drops incorporating lands that can provide multiple colors
+            Step 1 will ask for the number of colors used in the deck in order to simplify some cases (5-color being the worst as it has access to 1,2,3 and 5 color lands)
+                2 Color combos include the allies: Dimir, Azorius, Selesnya, Gruul, & Rakdos and the enemies: Orzhov, Boros, Izzet, Simic, & Golgari.
+                3 Color combos include the shards: Bant, Esper, Grixis, Jund, & Naya and the wedges: Abzan, Jeskai, Sultai, Mardu, Temur
+                The 5 Nephilim and 5 colors can fall into the same category, as will mono color decks
+            Step 2 */
+            cout << "\nHow many colors is your deck?\n";
+            int colorCount;
+            getSingleInput(&colorCount);
+
+            switch (colorCount)
+            {
+            case 1: {
+                cout << "\nHow many cards are in your deck?\n";
+                int deckSize;
+                getSingleInput(&deckSize);
+                cout << "\nHow many lands are in your deck?\n";
+                int landCount;
+                getSingleInput(&landCount);
+                double mulliganChance = 0;
+                std::vector<double> mulliganTable;
+
+                for (int i = 0; i <= 7; i++) {
+                    double pdfResult = pdfprob(landCount, deckSize, 7, i);
+                    if (i == 0 || i == 1 || i == 6 || i == 7) {
+                        mulliganChance += pdfResult;
+                    }
+                    mulliganTable.push_back(pdfResult);
+                    cout << "Your odds of a " << i << " land hand are: " << pdfResult * 100 << "%.\n";
+                }
+                cout << "\nIf we include a free mulligan, these odds become:\n";
+                mulligan(mulliganTable, mulliganChance);
+                cout << "Press any key to return to main menu\n";
+                system("pause>0");
+            }
             break;
-        case 3:
-            cout << "Feature coming soon! (TM)";
+            
+            case 2: {
+
+            }
+                break;
+            
+            case 3: {
+
+            }
+                break;
+            
+            case 4://case 4 falls through to case 5
+            case 5: {
+
+            }
+                break;
+            
+            default: {
+
+            }
+                break;
+            }
+        }
+              break;
+        case 3: {
+            cout << "Feature coming soon! (TM)"; 
+        }
             break;
         default:
             cout << "Staaahhhhp! Please do as you're told. \n";
@@ -137,7 +199,28 @@ void getSingleInput(int* var) {
     return;
 }
 
+double pdfprob(int desiredCards, int deckSize, int draws, int successes) {
+    return boost::math::pdf(boost::math::hypergeometric(desiredCards, draws, deckSize), successes);
+}
 
+double cdfprob(int desiredCards, int deckSize, int draws, int successes) {
+    return boost::math::cdf(boost::math::hypergeometric(desiredCards, draws, deckSize), successes);
+}
+
+void mulligan(std::vector<double> mulliganTable, double mulliganChance) {
+    using std::cout;
+    for (int i = 0; i <= 7; i++) {
+        if (i == 0 || i == 1 || i == 6 || i == 7) {
+            double result = mulliganTable[i] * mulliganChance;
+            cout << "Your odds of a " << i << " land hand are: " << result * 100 << "%.\n";
+        }
+        else {
+            double result = mulliganTable[i] + mulliganTable[i] * mulliganChance;
+            cout << "Your odds of a " << i << " land hand are: " << result * 100 << "%.\n";
+        }
+    }
+    return;
+}
 /* test this calculates the cumualtive probability of drawing from 35 lands, with a full hand of 7 cards, in a 99 card edh deck, of drawing up to 7 lands (0-7 lands inclusive)
 std::cout << cdf(hypergeometric(35,7,99), 7);
 */
