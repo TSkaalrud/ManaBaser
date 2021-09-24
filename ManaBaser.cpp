@@ -67,7 +67,6 @@ int main()
             int deckSize;
             getSingleInput(&deckSize);
 
-
             cout << "\nFor each of the prior categories, \n" <<
                 "how many of the card type are in your deck and how many of that type do you want to draw in your opening hand.\n" <<
                 "e.g.: 35 2\n\n";
@@ -91,20 +90,18 @@ int main()
                 }
             } while (drawSum > 7);
 
-
             cout << "\nBased on what you've given:\n";
             int drawsLeft = 7;
             int landsLeft = 0;
             for (unsigned int i = 0; i < inputCategories.size(); i++) {
                 double pdfTemp = pdf(hypergeometric(statsInputs[i][0], drawsLeft, deckSize), statsInputs[i][1]);
                 double cdfTemp = (cdf(hypergeometric(statsInputs[i][0], drawsLeft, deckSize), statsInputs[i][1]) - cdf(hypergeometric(statsInputs[i][0], drawsLeft, deckSize), 0));
+                drawsLeft -= statsInputs[i][1];
+                deckSize -= statsInputs[i][1];
                 cout << "Your chances of drawing exactly " << statsInputs[i][1] << " " << inputCategories[i] << " are: " << pdfTemp * 100 << "%\n";
                 cout << "Factoring in a free mulligan, this goes up to " << (pdfTemp + ((1 - pdfTemp) * pdfTemp)) * 100 << "%\n";
                 cout << "Excluding none, your chances of drawing up to that many are: " << cdfTemp * 100 << "%\n";
                 cout << "Factoring in a free mulligan, these cumulative chances increase to " << (cdfTemp + ((1 - cdfTemp) * cdfTemp)) * 100 << "%\n";
-
-                drawsLeft -= statsInputs[i][1];
-                deckSize -= statsInputs[i][1];
                 landsLeft += (statsInputs[i][0] - statsInputs[i][1]);
             }
             cout << "Subsequent draws give a " <<
@@ -153,19 +150,22 @@ int main()
             }
             break;
             
+            //starting with case 2, begin with the lands that cover the most colors first and recursively add them down the line 5>3>2>1 to get final counts
             case 2: {
+                //3 steps, 1 for each color and 1 for the combination
 
             }
                 break;
             
             case 3: {
+                //7 steps, 1 for each color, 1 for each pair, and 1 for the tri
 
             }
                 break;
             
             case 4://case 4 falls through to case 5
             case 5: {
-
+                //21 steps 1 for each color, 10 for each pair, 5 for each tri, and 1 for 5c
             }
                 break;
             
@@ -175,9 +175,16 @@ int main()
                 break;
             }
         }
-              break;
+            break;
         case 3: {
+            //Ask the user for each color they care about, then ask them which turns they care about, then ask them for how much mana they need
+            //then calculate
             cout << "Feature coming soon! (TM)"; 
+        }
+            break;
+        case 4: {
+            //Learn networking shenanigans
+            cout << "Feature coming soon! (TM)";
         }
             break;
         default:
@@ -209,16 +216,19 @@ double cdfprob(int desiredCards, int deckSize, int draws, int successes) {
 
 void mulligan(std::vector<double> mulliganTable, double mulliganChance) {
     using std::cout;
+    double screwedChance = 0;
     for (int i = 0; i <= 7; i++) {
         if (i == 0 || i == 1 || i == 6 || i == 7) {
             double result = mulliganTable[i] * mulliganChance;
             cout << "Your odds of a " << i << " land hand are: " << result * 100 << "%.\n";
+            screwedChance += result;
         }
         else {
             double result = mulliganTable[i] + mulliganTable[i] * mulliganChance;
             cout << "Your odds of a " << i << " land hand are: " << result * 100 << "%.\n";
         }
     }
+    cout << "Overall, your deck's chances of being screwed/flooded are: " << screwedChance * 100 << "%.\n";
     return;
 }
 /* test this calculates the cumualtive probability of drawing from 35 lands, with a full hand of 7 cards, in a 99 card edh deck, of drawing up to 7 lands (0-7 lands inclusive)
