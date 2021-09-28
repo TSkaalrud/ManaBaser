@@ -18,6 +18,7 @@
 #include <string>
 #include <map>
 #include <list>
+#include <math.h>
 
 void getSingleInput(int* var);
 void getSingleInput(std::string* var);
@@ -313,17 +314,19 @@ void openingDrawStats(std::string deckColors, std::map<std::string, int> map, in
 
             //cout << sourceCount << " " << drawsLeft << " " << deckSize << " " << sourceDesired << std::endl;
 
-            double pdfTemp = pdf(hypergeometric(sourceCount, drawsLeft, deckSize), sourceDesired);
-            double cdfTemp = (cdf(hypergeometric(sourceCount, drawsLeft, deckSize), sourceDesired) -
-                cdf(hypergeometric(map.at(std::string(1, deckColors[i])), drawsLeft, deckSize), 0));
+            double pdfTemp = pdf(hypergeometric(sourceCount, drawsLeft, deckSize), std::min(sourceCount, sourceDesired));
+            double cdfTemp = (cdf(hypergeometric(sourceCount, drawsLeft, deckSize), std::min(sourceCount, drawsLeft)) -
+                              cdf(hypergeometric(sourceCount, drawsLeft, deckSize), 0));
             drawsLeft -= sourceDesired;
             deckSize -= sourceDesired;
             landsLeft -= sourceDesired;
 
-            cout << "Your chances of drawing exactly " << sourceDesired << " " << deckColors[i] << " are: " << pdfTemp * 100 << "%\n";
+            cout << "Your chances of drawing exactly " << sourceDesired << " " << deckColors[i] << " are: " << pdfTemp * 100 << "% on a given draw.\n";
+            cout << "Your chances of drawing any " << deckColors[i] << " are: " << cdfTemp * 100 << "% on a given draw.\n";
+
         }
 
-        cout << "\nSubsequent draws give an [accurate] " <<
+        cout << "\nSubsequent draws upon getting this hand give an [accurate] " <<
             (cdf(hypergeometric(landsLeft, drawSum, deckSize), drawSum) - cdf(hypergeometric(landsLeft, drawSum, deckSize), 0)) * 100 <<
             "% chance of you drawing further lands before you run out.\n\n";
 
