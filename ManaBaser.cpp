@@ -16,17 +16,24 @@
 #include <algorithm>
 #include <vector>
 #include <string>
+#include <map>
+#include <list>
 
 void getSingleInput(int* var);
+void getSingleInput(std::string* var);
 double pdfprob(int desiredCards, int deckSize, int draws = 1, int successes = 0);
 double cdfprob(int desiredCards, int deckSize, int draws = 1, int successes = 0);
 void mulligan(std::vector<double> mulliganTable, double mulliganChance);
+int parseColorInput(std::string deckColors, std::map<std::string, int>& map);
+void openingDrawStats(std::string deckColors, std::map<std::string, int> map, int landCount);
 
 int main()
 {
     using namespace boost::math;
     using std::cin;
     using std::cout;
+    using std::string;
+    using std::endl;
 
     int modeSelected;
     cout << "***Welcome to ManaBaser***\n";
@@ -47,8 +54,8 @@ int main()
             return EXIT_SUCCESS;
             //Mode 1
         case 1: {
-            std::vector<std::string> inputCategories;
-            std::string inputBuffer = "";
+            std::vector<string> inputCategories;
+            string inputBuffer = "";
 
             //Query user for how many things they're interested in when drawing
             cout << "\nAlrighty then, let's figure out if you have bad luck or you just suck at math! \n" <<
@@ -62,7 +69,7 @@ int main()
             //Query user for each category's statistics relevant info (fills args 1 and 4 of hypergeometric)
             //Handle inputs for valid types and stats (0 in distribution arg 1 throws) also making sure they aren't trying to draw more than 7
             //check to make sure deckSize isn't exceeded by the total of all categories
-            cout << "\nNext, I'll get you to tell me about your deck. " <<
+            cout << "\nNext, I'll get you to tell me about your deck. e.g. 40 60 99 for Draft, Standard, or EDH respectively." <<
                 "How large is your deck?\n";
             int deckSize;
             getSingleInput(&deckSize);
@@ -119,74 +126,56 @@ int main()
                 3 Color combos include the shards: Bant, Esper, Grixis, Jund, & Naya and the wedges: Abzan, Jeskai, Sultai, Mardu, Temur
                 The 5 Nephilim and 5 colors can fall into the same category, as will mono color decks
             Step 2 */
-            cout << "\nHow many colors is your deck?\n";
             int colorCount;
-            getSingleInput(&colorCount);
+            int landCount;
+            string colorString;
+            std::map<string, int> colorMap;
 
-            switch (colorCount)
-            {
-            case 1: {
-                cout << "\nHow many cards are in your deck?\n";
-                int deckSize;
-                getSingleInput(&deckSize);
-                cout << "\nHow many lands are in your deck?\n";
-                int landCount;
-                getSingleInput(&landCount);
-                double mulliganChance = 0;
-                std::vector<double> mulliganTable;
+            //Parse input properly
+            cout << "\nWhat colors are your deck? E.G. BGRUW or BW\n";
+            getSingleInput(&colorString);
+            std::sort(colorString.begin(), colorString.end());
+            cout << colorString << endl;
+            colorCount = colorString.length();
+            cout << "Okay, a " << colorCount << " color deck.\n";
 
-                for (int i = 0; i <= 7; i++) {
-                    double pdfResult = pdfprob(landCount, deckSize, 7, i);
-                    if (i == 0 || i == 1 || i == 6 || i == 7) {
-                        mulliganChance += pdfResult;
+            //Monocolors
+            for (int i = 0; i < colorCount; i++) {
+                colorMap.insert(std::pair<string, int>(string(1, colorString[i]), 0));
+                //Bicolors
+                for (int j = i + 1; j < colorCount; j++) {
+                    if (colorCount > 1)
+                        colorMap.insert(std::pair<string, int>(string(1, colorString[i]) + colorString[j], 0));
+                    //tricolors
+                    for (int k = j + 1; k < colorCount; k++) {
+                        if (colorCount > 2)
+                            colorMap.insert(std::pair<string, int>(string(1, colorString[i]) + colorString[j] + colorString[k], 0));
+
                     }
-                    mulliganTable.push_back(pdfResult);
-                    cout << "Your odds of a " << i << " land hand are: " << pdfResult * 100 << "%.\n";
                 }
-                cout << "\nIf we include a free mulligan, these odds become:\n";
-                mulligan(mulliganTable, mulliganChance);
-                cout << "Press any key to return to main menu\n";
-                system("pause>0");
+            }
+            if (colorCount > 3) //4 & 5 colors
+                colorMap.insert(std::pair<string, int>("BGRUW", 0));
+
+            landCount = parseColorInput(colorString, colorMap);
+
+            openingDrawStats(colorString, colorMap, landCount);
             }
             break;
             
-            //starting with case 2, begin with the lands that cover the most colors first and recursively add them down the line 5>3>2>1 to get final counts
-            case 2: {
-                //3 steps, 1 for each color and 1 for the combination
-
-            }
-                break;
-            
-            case 3: {
-                //7 steps, 1 for each color, 1 for each pair, and 1 for the tri
-
-            }
-                break;
-            
-            case 4://case 4 falls through to case 5
-            case 5: {
-                //21 steps 1 for each color, 10 for each pair, 5 for each tri, and 1 for 5c
-            }
-                break;
-            
-            default: {
-
-            }
-                break;
-            }
-        }
-            break;
         case 3: {
             //Ask the user for each color they care about, then ask them which turns they care about, then ask them for how much mana they need
             //then calculate
-            cout << "Feature coming soon! (TM)"; 
+            cout << "\nFeature coming soon! (TM)";
         }
-            break;
-        case 4: {
+              break;
+        
+        case 4: {            
             //Learn networking shenanigans
-            cout << "Feature coming soon! (TM)";
+            cout << "\nFeature coming soon! (TM)";
         }
             break;
+
         default:
             cout << "Staaahhhhp! Please do as you're told. \n";
             break;
@@ -195,7 +184,18 @@ int main()
 }
 
 
+
 void getSingleInput(int* var) {
+    using std::cin;
+    using std::cout;
+    while (!(cin >> *var)) {
+        cin.clear(); //clear bad input flag
+        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); //discard input
+        cout << "Don't make me get sassy, gimme a real input!\n\n";
+    }
+    return;
+}
+void getSingleInput(std::string* var) {
     using std::cin;
     using std::cout;
     while (!(cin >> *var)) {
@@ -228,20 +228,110 @@ void mulligan(std::vector<double> mulliganTable, double mulliganChance) {
             cout << "Your odds of a " << i << " land hand are: " << result * 100 << "%.\n";
         }
     }
-    cout << "Overall, your deck's chances of being screwed/flooded are: " << screwedChance * 100 << "%.\n";
+    cout << "Overall, your deck's chances of being screwed/flooded are: " << screwedChance * 100 << "%.\n\n";
     return;
 }
+
+/*iterates over all the color combinations a given color deck could use, 
+asks the user for the count of each, updates the map's monocolored values, and returns the total land count
+*/
+int parseColorInput(std::string deckColors, std::map<std::string, int>& map) {
+    int landCount = 0;
+    std::map<std::string, int>::iterator it = map.begin();
+    while (it != map.end()) {
+        std::string colors = it->first;
+        int currentCount = it->second;
+        std::cout << "\nHow many " << colors << " lands are in your deck?\n";
+        int temp;
+        std::cin >> temp;
+        landCount += temp;
+
+        for (char c : colors) {
+            map.at(std::string(1,c)) += temp;
+        }
+
+        it++;
+    }
+    for (char c : deckColors) {
+        std::cout << "You have " << map.at(std::string(1, c))<< " " << c<< " land sources in your deck." << std::endl;
+    }
+    return landCount;
+}
+
+void openingDrawStats(std::string deckColors, std::map<std::string, int> map, int landCount) {
+    using std::cout;
+    using namespace boost::math;
+
+    //Query user for each category's statistics relevant info (fills args 1 and 4 of hypergeometric)
+    //Handle inputs for valid types and stats (0 in distribution arg 1 throws) also making sure they aren't trying to draw more than 7
+    //check to make sure deckSize isn't exceeded by the total of all categories
+    cout << "\nHow many cards are in your deck?\n";
+    int deckSize;
+    getSingleInput(&deckSize);
+
+    bool again = true;
+    while (again) {
+        int drawSum; //also the number of turns worth of land drops 
+        int landsLeft = landCount;
+        std::vector<int> statsInputs;
+        do {
+            drawSum = 0;
+            for (int i = 0; i < deckColors.length(); i++) {
+                cout << "\nHow many " << deckColors[i] << " would you like in your opening hand?\n";
+                int temp;
+                getSingleInput(&temp);
+                statsInputs.push_back(temp);
+                drawSum += temp;
+            }
+            if (drawSum > 7) {
+                cout << "You are attempting to draw too many cards, try again.\n";
+                statsInputs.clear();
+            }
+        } while (drawSum > 7);
+
+        int drawsLeft = 7;
+
+        double mulliganChance = 0;
+        std::vector<double> mulliganTable;
+        for (int i = 0; i <= 7; i++) {
+                    double pdfResult = pdfprob(landCount, deckSize, 7, i);
+                    if (i == 0 || i == 1 || i == 6 || i == 7) {
+                        mulliganChance += pdfResult;
+                    }
+                    mulliganTable.push_back(pdfResult);
+                    cout << "Your odds of a " << i << " land hand are: " << pdfResult * 100 << "%.\n";
+                }
+        cout << "Your chances of having an initially keepable hand (2-5 lands) are: " << (1 - mulliganChance) * 100 << "%\n";
+        cout << "\nIf we include a free mulligan, these odds become:\n";
+        mulligan(mulliganTable, mulliganChance);
+
+        //Disclaimer to not being entirely accurate
+        cout << "*Due to dependency complications in cases incorporating multicolored lands, the following probabilities are considered estimates*\n";
+        for (int i = 0; i < deckColors.length(); i++) {
+            int sourceCount = map.at(std::string(1, deckColors[i]));
+            int sourceDesired = statsInputs[i];
+
+            //cout << sourceCount << " " << drawsLeft << " " << deckSize << " " << sourceDesired << std::endl;
+
+            double pdfTemp = pdf(hypergeometric(sourceCount, drawsLeft, deckSize), sourceDesired);
+            double cdfTemp = (cdf(hypergeometric(sourceCount, drawsLeft, deckSize), sourceDesired) -
+                cdf(hypergeometric(map.at(std::string(1, deckColors[i])), drawsLeft, deckSize), 0));
+            drawsLeft -= sourceDesired;
+            deckSize -= sourceDesired;
+            landsLeft -= sourceDesired;
+
+            cout << "Your chances of drawing exactly " << sourceDesired << " " << deckColors[i] << " are: " << pdfTemp * 100 << "%\n";
+        }
+
+        cout << "\nSubsequent draws give an [accurate] " <<
+            (cdf(hypergeometric(landsLeft, drawSum, deckSize), drawSum) - cdf(hypergeometric(landsLeft, drawSum, deckSize), 0)) * 100 <<
+            "% chance of you drawing further lands before you run out.\n\n";
+
+        cout << "Enter 1 to check more stats or 0 to return to the main menu.\n";
+        std::cin >> again;
+    }
+}
+
 /* test this calculates the cumualtive probability of drawing from 35 lands, with a full hand of 7 cards, in a 99 card edh deck, of drawing up to 7 lands (0-7 lands inclusive)
 std::cout << cdf(hypergeometric(35,7,99), 7);
 */
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
