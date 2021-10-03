@@ -248,6 +248,7 @@ int parseColorInput(std::string deckColors, std::map<std::string, int>& map) {
         landCount += temp;
 
         for (char c : colors) {
+            if (map.count(std::string(1, c)))
             map.at(std::string(1,c)) += temp;
         }
 
